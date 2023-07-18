@@ -13,7 +13,8 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/sbin/nginx",
-            "args": ["-c", "${workspaceFolder}/conf/proxy-pass-module.conf", "-p", "${workspaceFolder}"],
+            "args": ["-c", "${workspaceFolder}/modules/ngx_http_echo_module/nginx.conf", "-p", "${workspaceFolder}"],
+            // "args": ["-c", "${workspaceFolder}/conf/proxy-pass-module.conf", "-p", "${workspaceFolder}"],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -29,7 +30,8 @@
             "request": "attach",
             "program": "${workspaceFolder}/bin/sbin/nginx",
             "MIMode": "lldb",
-            "processId": "${command:pickProcess}" // 这里不写具体 pid，可以弹框选择 worker pid
+            "processId": "76138" // 这里不写具体 pid，可以弹框选择 worker pid
+            // "processId": "${command:pickProcess}" // 这里不写具体 pid，可以弹框选择 worker pid
         },
 
     ]
