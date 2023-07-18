@@ -203,14 +203,14 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         module = cf->cycle->modules[m]->ctx;
         mi = cf->cycle->modules[m]->ctx_index;
 
-        if (module->create_main_conf) {
+        if (module->create_main_conf) { // ngx_http_core_create_main_conf at ngx_http_core_module.c:3604
             ctx->main_conf[mi] = module->create_main_conf(cf);
             if (ctx->main_conf[mi] == NULL) {
                 return NGX_CONF_ERROR;
             }
         }
 
-        if (module->create_srv_conf) {
+        if (module->create_srv_conf) { // ngx_http_core_create_srv_conf at ngx_http_core_module.c:3658
             ctx->srv_conf[mi] = module->create_srv_conf(cf);
             if (ctx->srv_conf[mi] == NULL) {
                 return NGX_CONF_ERROR;

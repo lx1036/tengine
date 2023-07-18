@@ -1,0 +1,36 @@
+{
+    // https://code.visualstudio.com/docs/cpp/launch-json-reference
+    // 调试参考: https://zhuanlan.zhihu.com/p/47236996
+
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        // 调试 master 进程
+        {
+            "name": "master",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/sbin/nginx",
+            "args": ["-c", "${workspaceFolder}/conf/proxy-pass-module.conf", "-p", "${workspaceFolder}"],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            // 使用 vscode debugConsole https://code.visualstudio.com/docs/cpp/launch-json-reference#_externalconsole
+            "externalConsole": false, 
+            "MIMode": "lldb"
+        },
+
+        // 调试 worker 进程
+        {
+            "name": "worker",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "${workspaceFolder}/bin/sbin/nginx",
+            "MIMode": "lldb",
+            "processId": "${command:pickProcess}" // 这里不写具体 pid，可以弹框选择 worker pid
+        },
+
+    ]
+}

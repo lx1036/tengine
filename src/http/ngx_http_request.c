@@ -507,7 +507,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
         p = ngx_proxy_protocol_read(c, b->pos, b->last);
 
         if (p == NULL) {
-            ngx_http_close_connection(c);
+            ngx_http_close_connection(c); // proxy-protocol 协议规定：建立链接后第一个包必须是PP包，如果有错误，就需要 close connection
             return;
         }
 

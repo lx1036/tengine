@@ -4199,9 +4199,9 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         clcf->auto_redirect = 1;
     }
 
-    value = cf->args->elts;
+    value = cf->args->elts; // proxy_pass
 
-    url = &value[1];
+    url = &value[1]; // http://localhost:9091
 
     n = ngx_http_script_variables_count(url);
 

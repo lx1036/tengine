@@ -134,7 +134,7 @@ struct ngx_event_s {
 
     ngx_log_t       *log;
 
-    ngx_rbtree_node_t   timer;
+    ngx_rbtree_node_t   timer; // 红黑树来实现定时器，目的在于能够快速的查询到哪些定时器超时了
 
     /* the posted queue */
     ngx_queue_t      queue;

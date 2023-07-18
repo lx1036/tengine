@@ -105,7 +105,7 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
 
     static const u_char signature[] = "\r\n\r\n\0\r\nQUIT\n";
 
-    p = buf;
+    p = buf; // 指针拷贝，修改 p 不影响 buf: "PROXY TCP4 127.0.0.1 127.0.0.1 56935 12345"
     len = last - buf;
 
     if (len >= sizeof(ngx_proxy_protocol_header_t)

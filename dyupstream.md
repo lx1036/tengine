@@ -5,10 +5,12 @@ https://tengine.taobao.org/document_cn/http_dyups_cn.html
 编译包含 module:
 
 ```
-./configure --prefix=./bin --add-module=modules/ngx_http_upstream_dyups_module
+# 添加 stream TCP/UDP 四层编译
+./configure --prefix=./bin --add-module=modules/ngx_http_upstream_dyups_module --with-stream --with-debug
 make && make install
 
 ./bin/sbin/nginx -c conf/nginx-dyup.conf -p .
+./bin/sbin/nginx -c conf/proxy-protocol.conf -p .
 ```
 
 

@@ -1093,7 +1093,7 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     /* count the number of the event modules and set up their indices */
 
-    ngx_event_max_module = ngx_count_modules(cf->cycle, NGX_EVENT_MODULE);
+    ngx_event_max_module = ngx_count_modules(cf->cycle, NGX_EVENT_MODULE); // 2
 
     ctx = ngx_pcalloc(cf->pool, sizeof(void *));
     if (ctx == NULL) {
@@ -1114,7 +1114,7 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         m = cf->cycle->modules[i]->ctx;
 
-        if (m->create_conf) {
+        if (m->create_conf) { // *->ngx_event_core_create_conf
             (*ctx)[cf->cycle->modules[i]->ctx_index] =
                                                      m->create_conf(cf->cycle);
             if ((*ctx)[cf->cycle->modules[i]->ctx_index] == NULL) {
@@ -1147,7 +1147,7 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         m = cf->cycle->modules[i]->ctx;
 
-        if (m->init_conf) {
+        if (m->init_conf) { // ngx_event_core_init_conf
             rv = m->init_conf(cf->cycle,
                               (*ctx)[cf->cycle->modules[i]->ctx_index]);
             if (rv != NGX_CONF_OK) {
