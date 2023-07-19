@@ -1,0 +1,29 @@
+
+
+
+# https://github.com/dgoffredo/nginx-curl
+
+
+#  Compile: 
+#  ./configure --prefix=./bin --with-stream --with-debug --add-module=./modules/ngx_http_echo_module/ --add-module=./modules/ngx_http_curl_module/
+#  make && make install
+# ./bin/sbin/nginx -c ./modules/ngx_http_curl_module/nginx.conf -p .
+
+# ngx_addon_name=ngx_http_curl_module
+# HTTP_MODULES="$HTTP_MODULES ngx_http_curl_module"
+# CORE_DEPS="$CORE_DEPS $ngx_addon_dir/ngx_curl.h $ngx_addon_dir/ngx_curl.c"
+# NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/ngx_http_curl_module.c"
+# ngx_feature_libs='-I curl'
+# ngx_feature_libs="-lcurl"
+# CORE_LIBS="$CORE_LIBS -lcurl"
+# ngx_module_libs="$ngx_module_libs $ngx_feature_libs"
+
+
+ngx_module_type=HTTP
+ngx_module_name=ngx_curl_example_module
+ngx_module_srcs="$ngx_addon_dir/ngx_http_curl_module.c $ngx_addon_dir/ngx_curl.c"
+ngx_module_libs=-lcurl
+
+. auto/module
+
+ngx_addon_name=$ngx_module_name
