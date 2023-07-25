@@ -13,8 +13,8 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/sbin/nginx",
-            "args": ["-c", "${workspaceFolder}/modules/ngx_http_echo_module/nginx.conf", "-p", "${workspaceFolder}"],
-            // "args": ["-c", "${workspaceFolder}/conf/proxy-pass-module.conf", "-p", "${workspaceFolder}"],
+            // "args": ["-c", "${workspaceFolder}/modules/ngx_http_echo_module/nginx.conf", "-p", "${workspaceFolder}"],
+            "args": ["-c", "${workspaceFolder}/conf/proxy-pass-module.conf", "-p", "${workspaceFolder}"],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -23,14 +23,16 @@
             "MIMode": "lldb"
         },
 
-        // 调试 worker 进程
+        // 想要调试 worker 进程，先开启调试 master 进程，然后选择 worker process id
+        // 调试 worker 进程还比较麻烦，每次还得手动 kill -9 {worker process id}，所以只能先命令行启动，然后指定 processId
         {
             "name": "worker",
             "type": "cppdbg",
             "request": "attach",
             "program": "${workspaceFolder}/bin/sbin/nginx",
+            // "args": ["-c", "${workspaceFolder}/modules/ngx_http_echo_module/nginx.conf", "-p", "${workspaceFolder}"],
             "MIMode": "lldb",
-            "processId": "76138" // 这里不写具体 pid，可以弹框选择 worker pid
+            "processId": "41893" // 这里不写具体 pid，可以弹框选择 worker pid
             // "processId": "${command:pickProcess}" // 这里不写具体 pid，可以弹框选择 worker pid
         },
 

@@ -448,7 +448,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
         b->end = b->last + size;
     }
 
-    n = c->recv(c, b->last, size);
+    n = c->recv(c, b->last, size); // 收到 HTTP/1 报文
 
     if (n == NGX_AGAIN) {
 
@@ -501,7 +501,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
     c->received += n;
 #endif
 
-    if (hc->proxy_protocol) {
+    if (hc->proxy_protocol) { // 这里就开始判断是否是 PP
         hc->proxy_protocol = 0;
 
         p = ngx_proxy_protocol_read(c, b->pos, b->last);
@@ -513,7 +513,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
 
         b->pos = p;
 
-        if (b->pos == b->last) {
+        if (b->pos == b->last) { // 如果第一个报文只有 PP 报文，等待后面的数据报文
             c->log->action = "waiting for request";
             b->pos = b->start;
             b->last = b->start;
@@ -579,7 +579,7 @@ ngx_http_alloc_request(ngx_connection_t *c)
     ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_main_conf_t  *cmcf;
 
-    hc = c->data;
+    hc = c->data; // http_connection
 
     cscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_core_module);
 

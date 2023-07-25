@@ -904,7 +904,7 @@ ngx_mail_proxy_send_proxy_protocol(ngx_mail_session_t *s)
                    "mail proxy send PROXY protocol header");
 
     p = ngx_proxy_protocol_write(s->connection, buf,
-                                 buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+                                 buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER, s->proxy->proxy_protocol);
     if (p == NULL) {
         ngx_mail_proxy_internal_server_error(s);
         return NGX_ERROR;

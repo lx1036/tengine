@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "array": "c",
+        "istream": "c",
+        "locale": "c",
+        "memory": "c",
+        "tuple": "c",
+        "variant": "c",
+        "string": "c"
+    }
+}
