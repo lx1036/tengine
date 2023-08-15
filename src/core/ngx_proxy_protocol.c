@@ -26,7 +26,7 @@
 
 typedef struct {
     u_char                                  signature[12];
-    u_char                                  version_command;
+    u_char                                  version_command; // The next byte (the 13th one) is the protocol version and command
     u_char                                  family_transport;
     u_char                                  len[2];
 } ngx_proxy_protocol_header_t;
@@ -128,7 +128,7 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
     u_char                *p;
     ngx_proxy_protocol_t  *pp;
 
-    static const u_char signature[] = "\r\n\r\n\0\r\nQUIT\n";
+    static const u_char signature[] = "\r\n\r\n\0\r\nQUIT\n"; // \x0D \x0A \x0D \x0A \x00 \x0D \x0A \x51 \x55 \x49 \x54 \x0A
 
     p = buf; // 指针拷贝，修改 p 不影响 buf: "PROXY TCP4 127.0.0.1 127.0.0.1 56935 12345"
     len = last - buf;
@@ -166,7 +166,7 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
         return NULL;
     }
 
-    p = ngx_proxy_protocol_read_addr(c, p, last, &pp->src_addr);
+    p = ngx_proxy_protocol_read_addr(c, p, last, &pp->src_addr); // 因为可能是 ipv4/ipv6 地址，所以只能这么取值
     if (p == NULL) {
         goto invalid;
     }
@@ -470,12 +470,12 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 #if (NGX_HAVE_INET6)
     ngx_proxy_protocol_inet6_addrs_t   *in6;
 #endif
-
+    // C 语言可以类型转换 字节->结构体，Go 需要一个个字段获取，类似 msg.Len = binary.BigEndian.Uint16(data[16:18]) msg.Type = data[18]
     header = (ngx_proxy_protocol_header_t *) buf;
 
     buf += sizeof(ngx_proxy_protocol_header_t);
 
-    version = header->version_command >> 4;
+    version = header->version_command >> 4; // 必须格式为 \x2{command}
 
     if (version != 2) {
         ngx_log_error(NGX_LOG_ERR, c->log, 0,
@@ -504,7 +504,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
     transport = header->family_transport & 0x0f;
 
     /* only STREAM is supported */
-    if (transport != 1) { // TODO: 还需要支持 UDP PPv2
+    if (transport != 1) { // TODO: 还需要支持 UDP PPv2, TCP or UNIX_STREAM, 不支持 UDP or UNIX_DGRAM
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
                        "PROXY protocol v2 unsupported transport %ui",
                        transport);
@@ -587,7 +587,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
     }
 
     pp->src_addr.len = ngx_sock_ntop(&src_sockaddr.sockaddr, socklen,
-                                     pp->src_addr.data, NGX_SOCKADDR_STRLEN, 0);
+                                     pp->src_addr.data, NGX_SOCKADDR_STRLEN, 0); // copy ip -> pp->src_addr.data
 
     pp->dst_addr.data = ngx_pnalloc(c->pool, NGX_SOCKADDR_STRLEN);
     if (pp->dst_addr.data == NULL) {

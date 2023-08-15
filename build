@@ -7,8 +7,9 @@
 
 # --add-module=./modules/ngx_http_curl_module/ \ 这个模块总是导致 worker 进程重启
 
-./configure --prefix=./bin --with-stream  --with-debug --with-pcre  \
---add-module=./modules/ngx_http_echo_module/ \
+./configure --prefix=./bin --with-stream --with-stream_ssl_module --with-debug --with-pcre  \
+--add-module=./modules/ngx_http_echo_module \
+--add-module=./modules/ngx_stream_lua_module_0.0.13 \
 --with-http_lua_module \
 --with-luajit-inc=/usr/local/Cellar/openresty/1.21.4.2_1/luajit/include/luajit-2.1 \
 --with-luajit-lib=/usr/local/Cellar/openresty/1.21.4.2_1/luajit/lib \
