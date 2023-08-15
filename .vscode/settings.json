@@ -6,6 +6,10 @@
         "memory": "c",
         "tuple": "c",
         "variant": "c",
-        "string": "c"
+        "string": "c",
+        "ngx_http_headers_more_headers_in.h": "c",
+        "ngx_http_headers_more_util.h": "c",
+        "ddebug.h": "c",
+        "ngx_config.h": "c"
     }
 }

@@ -154,7 +154,7 @@ else
 fi
 
 ngx_module_incs=
-ngx_module_libs=
+ngx_module_libs="-L/usr/local/Cellar/pcre/8.45/lib -lpcre"
 
 if [ $ngx_found = yes ]; then
     # this is a hack to persuade nginx's build system to favor
