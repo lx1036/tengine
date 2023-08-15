@@ -1194,7 +1194,7 @@ ngx_http_dyups_body_handler(ngx_http_request_t *r)
     value = res->elts;
 
     if (value[0].len != 8
-        || ngx_strncasecmp(value[0].data, (u_char *) "upstream", 8) != 0)
+        || ngx_strncasecmp(value[0].data, (u_char *) "upstream", 8) != 0) // path 必须是 upstream/xxx
     {
         ngx_str_set(&rv, "not support this api");
         status = NGX_HTTP_NOT_FOUND;
