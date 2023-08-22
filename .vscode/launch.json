@@ -14,7 +14,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/sbin/nginx",
             // "args": ["-c", "${workspaceFolder}/modules/ngx_http_echo_module/nginx.conf", "-p", "${workspaceFolder}"],
-            "args": ["-c", "${workspaceFolder}/conf/nginx-lua.conf", "-p", "${workspaceFolder}"],
+            "args": ["-c", "${workspaceFolder}/conf/nginx-tcp.conf", "-p", "${workspaceFolder}"],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -34,6 +34,22 @@
             "MIMode": "lldb",
             // "processId": "41893" // 这里不写具体 pid，可以弹框选择 worker pid
             "processId": "${command:pickProcess}" // 这里不写具体 pid，可以弹框选择 worker pid
+        },
+
+        // 自己的 nginx 程序
+        {
+            "name": "mynginx",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bpf/tengine/objs/nginx",
+            // "args": ["-c", "${workspaceFolder}/modules/ngx_http_echo_module/nginx.conf", "-p", "${workspaceFolder}"],
+            // "args": ["-c", "${workspaceFolder}/conf/nginx-tcp.conf", "-p", "${workspaceFolder}"],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            // 使用 vscode debugConsole https://code.visualstudio.com/docs/cpp/launch-json-reference#_externalconsole
+            "externalConsole": false, 
+            "MIMode": "lldb"
         },
 
     ]

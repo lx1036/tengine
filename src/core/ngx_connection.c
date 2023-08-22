@@ -840,10 +840,10 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
             if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_FASTOPEN,
                            (const void *) &ls[i].fastopen, sizeof(int))
                 == -1)
-            {
+            { // TCP_FASTOPEN 只有 linux 有，mac 本地会报错
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
                               "setsockopt(TCP_FASTOPEN, %d) %V failed, ignored",
-                              ls[i].fastopen, &ls[i].addr_text);
+                              ls[i].fastopen, &ls[i].addr_text); // setsockopt(TCP_FASTOPEN, 1024) 0.0.0.0:9090 failed, ignored
             }
         }
 #endif

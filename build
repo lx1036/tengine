@@ -7,6 +7,8 @@
 
 # --add-module=./modules/ngx_http_curl_module/ \ 这个模块总是导致 worker 进程重启
 
+# ./configure --prefix=./bin --with-stream --with-stream_ssl_module --with-debug --with-pcre
+
 ./configure --prefix=./bin --with-stream --with-stream_ssl_module --with-debug --with-pcre  \
 --add-module=./modules/ngx_http_echo_module \
 --add-module=./modules/ngx_stream_lua_module_0.0.13 \

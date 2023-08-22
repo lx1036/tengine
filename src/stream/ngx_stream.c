@@ -652,7 +652,7 @@ found:
 #endif
 }
 
-
+// 这里会去创建 listener, 根据配置 "listen 4001 reuseport;"
 static char *
 ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 {
@@ -696,7 +696,7 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
                 i++;
                 continue;
             }
-
+            // 这里会去创建 listener, 根据配置 "listen 4001 reuseport;"
             ls = ngx_create_listening(cf, addr[i].opt.sockaddr,
                                       addr[i].opt.socklen);
             if (ls == NULL) {
@@ -732,7 +732,7 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 #endif
 
 #if (NGX_HAVE_TCP_FASTOPEN)
-            ls->fastopen = addr[i].opt.fastopen;
+            ls->fastopen = addr[i].opt.fastopen; // -1
 #endif
 
 #if (NGX_HAVE_REUSEPORT)

@@ -10,6 +10,15 @@
         "ngx_http_headers_more_headers_in.h": "c",
         "ngx_http_headers_more_util.h": "c",
         "ddebug.h": "c",
-        "ngx_config.h": "c"
+        "ngx_config.h": "c",
+        "ngx_auto_headers.h": "c",
+        "ngx_posix_config.h": "c",
+        "ngx_core.h": "c",
+        "nginx.h": "c",
+        "__mutex_base": "cpp",
+        "mutex": "cpp",
+        "ngx_files.h": "c",
+        "ngx_shmtx.h": "c",
+        "ngx_event.h": "c"
     }
 }

@@ -1,0 +1,12 @@
+
+
+sftp.json
+# Ignore all local history of files
+.history/
+# OS X
+.DS_Store
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+'''
