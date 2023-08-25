@@ -128,15 +128,15 @@ typedef struct {
 #endif
 } ngx_stream_conf_addr_t;
 
-
+// https://nginx.org/en/docs/stream/stream_processing.html
 typedef enum {
-    NGX_STREAM_POST_ACCEPT_PHASE = 0,
-    NGX_STREAM_PREACCESS_PHASE,
-    NGX_STREAM_ACCESS_PHASE,
-    NGX_STREAM_SSL_PHASE,
-    NGX_STREAM_PREREAD_PHASE,
-    NGX_STREAM_CONTENT_PHASE,
-    NGX_STREAM_LOG_PHASE
+    NGX_STREAM_POST_ACCEPT_PHASE = 0, // accept a client connection
+    NGX_STREAM_PREACCESS_PHASE, // Preliminary check for access
+    NGX_STREAM_ACCESS_PHASE, // Client access limitation before actual data processing
+    NGX_STREAM_SSL_PHASE, // TLS/SSL termination
+    NGX_STREAM_PREREAD_PHASE, // Reading initial bytes of data into the preread buffer to allow modules such as ngx_stream_ssl_preread_module analyze the data before its processing
+    NGX_STREAM_CONTENT_PHASE, // data is actually processed, usually proxied to upstream servers, or a specified value is returned to a client
+    NGX_STREAM_LOG_PHASE // The final phase where the result of a client session processing is recorded. The ngx_stream_log_module module is invoked at this phase.
 } ngx_stream_phases;
 
 

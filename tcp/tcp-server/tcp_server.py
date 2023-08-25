@@ -7,7 +7,7 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # 监听的 IP 地址和端口号
 host = '127.0.0.1'
-port = 4000
+port = 5002
 
 # 绑定 IP 地址和端口号
 server_socket.bind((host, port))
@@ -30,6 +30,7 @@ while True:
 
             # 处理接收到的数据
             # 这里可以根据业务逻辑进行相应的处理
+            print("get data from client: {}".format(data))
 
             # 发送响应给客户端
             response = "Hello from the server!"

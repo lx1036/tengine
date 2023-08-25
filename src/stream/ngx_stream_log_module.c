@@ -1628,3 +1628,8 @@ ngx_stream_log_init(ngx_conf_t *cf)
 
     return NGX_OK;
 }
+
+/*
+log_format main '$remote_addr [$time_local] $bytes_received $bytes_sent $protocol $status $connection $session_time';
+*/
+
