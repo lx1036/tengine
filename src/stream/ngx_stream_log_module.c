@@ -363,7 +363,7 @@ ngx_stream_log_write(ngx_stream_session_t *s, ngx_stream_log_t *log,
 #endif
 
     if (log->script == NULL) {
-        name = log->file->name.data;
+        name = log->file->name.data; // /dev/stdout
 
 #if (NGX_ZLIB)
         buffer = log->file->data;
@@ -372,7 +372,7 @@ ngx_stream_log_write(ngx_stream_session_t *s, ngx_stream_log_t *log,
             n = ngx_stream_log_gzip(log->file->fd, buf, len, buffer->gzip,
                                     s->connection->log);
         } else {
-            n = ngx_write_fd(log->file->fd, buf, len);
+            n = ngx_write_fd(log->file->fd, buf, len); // log->file->fd="/dev/stdout"
         }
 #else
         n = ngx_write_fd(log->file->fd, buf, len);

@@ -58,8 +58,26 @@ ngx_init_cycle(ngx_cycle_t *old_cycle) {
     char                 hostname[NGX_MAXHOSTNAMELEN];
 
     
+    log = old_cycle->log;
+    pool = ngx_create_pool(NGX_CYCLE_POOL_SIZE, log);
+    if (pool == NULL) {
+        return NULL;
+    }
+    pool->log = log;
 
+    cycle = ngx_pcalloc(pool, sizeof(ngx_cycle_t)); // info: 实例化 cycle 对象
+    if (cycle == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+    cycle->pool = pool;
+    cycle->log = log;
+    cycle->old_cycle = old_cycle;
+#if (NGX_SSL && NGX_SSL_ASYNC)
+    cycle->no_ssl_init = old_cycle->no_ssl_init;
+#endif
 
+    
 
 
 

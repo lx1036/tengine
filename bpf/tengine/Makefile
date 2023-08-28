@@ -1,4 +1,6 @@
 
+# 本地运行 `make && make run` 编译自己的 nginx 二进制
+
 CC =	cc
 CFLAGS = -I/usr/local/Cellar/openresty/1.21.4.2_1/luajit/include/luajit-2.1 \
 	-I/usr/local/Cellar/openresty/1.21.4.2_1/luajit/include/luajit-2.1 \

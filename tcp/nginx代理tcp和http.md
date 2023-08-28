@@ -11,9 +11,8 @@ tcp client(10次请求) -> tcp nginx(1次日志) -> tcp server(10次日志): ok
 
 
 
-
-http client(10次请求) -> tcp nginx(0次日志) -> http server(10次日志): ok
-
+目前模拟的 python 代码不正确
+http client(10次请求) -> tcp nginx(1次日志) -> http server(10次日志): ok,期望应该是1次日志
 http client(10次请求) -> http nginx(10次日志) -> http server(10次日志): ok
 
 

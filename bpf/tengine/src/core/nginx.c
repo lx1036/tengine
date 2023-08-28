@@ -177,7 +177,7 @@ static ngx_core_module_t  ngx_core_module_ctx = {
     ngx_core_module_init_conf
 };
 
-
+// c 语言里可以和 go 一样，缺省 field
 ngx_module_t  ngx_core_module = {
     NGX_MODULE_V1,
     &ngx_core_module_ctx,                  /* module context */
@@ -317,9 +317,18 @@ int main(int argc, char *const *argv) {
     }
 
 
-    
+    ngx_cycle = cycle;
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+    if (ccf->master && ngx_process == NGX_PROCESS_SINGLE) {
+        ngx_process = NGX_PROCESS_MASTER;
+    }
 
 
+    if (ngx_process == NGX_PROCESS_SINGLE) {
+        // ngx_single_process_cycle(cycle);
+    } else {
+        ngx_master_process_cycle(cycle);
+    }
 
     return 0;
 }
