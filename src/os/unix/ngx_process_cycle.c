@@ -849,7 +849,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         rlmt.rlim_cur = (rlim_t) ccf->rlimit_nofile;
         rlmt.rlim_max = (rlim_t) ccf->rlimit_nofile;
 
-        if (setrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
+        if (setrlimit(RLIMIT_NOFILE, &rlmt) == -1) { // number of open files
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "setrlimit(RLIMIT_NOFILE, %i) failed",
                           ccf->rlimit_nofile);
@@ -873,7 +873,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         exit(2);
     }
 #endif
-
+    // user 指令
     if (geteuid() == 0) {
         if (setgid(ccf->group) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,

@@ -139,8 +139,7 @@ static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start worker processes");
 
     for (i = 0; i < n; i++) {
-        ngx_spawn_process(cycle, ngx_worker_process_cycle,
-                          (void *) (intptr_t) i, "worker process", type);
+        ngx_spawn_process(cycle, ngx_worker_process_cycle, (void *) (intptr_t) i, "worker process", type);
         ngx_pass_open_channel(cycle);
     }
 }
@@ -353,5 +352,93 @@ static void ngx_pass_open_channel(ngx_cycle_t *cycle){
 
         ngx_write_channel(ngx_processes[i].channel[0],
                           &ch, sizeof(ngx_channel_t), cycle->log);
+    }
+}
+
+static void ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker) {
+    ngx_core_conf_t  *ccf;
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (ngx_add_channel_event(cycle, ngx_channel, NGX_READ_EVENT, ngx_channel_handler) == NGX_ERROR) {
+        /* fatal */
+        exit(2);
+    }
+}
+
+static void ngx_channel_handler(ngx_event_t *ev) {
+    ngx_int_t          n;
+    ngx_channel_t      ch;
+    ngx_connection_t  *c;
+
+    if (ev->timedout) {
+        ev->timedout = 0;
+        return;
+    }
+
+    c = ev->data;
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel handler");
+
+    for ( ;; ) {
+        n = ngx_read_channel(c->fd, &ch, sizeof(ngx_channel_t), ev->log);
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %i", n);
+        if (n == NGX_ERROR) {
+            if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
+#if (NGX_HTTP_SSL && NGX_SSL_ASYNC)
+            if (c->async_enable && ngx_del_async_conn) {
+                if (c->num_async_fds) {
+                    ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+                    c->num_async_fds--;
+                }
+            }
+#endif
+                ngx_del_conn(c, 0);
+            }
+
+            ngx_close_connection(c);
+            return;
+        }
+
+        if (ngx_event_flags & NGX_USE_EVENTPORT_EVENT) {
+            if (ngx_add_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+                return;
+            }
+        }
+
+        if (n == NGX_AGAIN) {
+            return;
+        }
+
+        switch (ch.command) {
+        case NGX_CMD_QUIT:
+            ngx_quit = 1;
+            break;
+
+        case NGX_CMD_TERMINATE:
+            ngx_terminate = 1;
+            break;
+
+        case NGX_CMD_REOPEN:
+            ngx_reopen = 1;
+            break;
+
+        case NGX_CMD_OPEN_CHANNEL:
+            ngx_log_debug3(NGX_LOG_DEBUG_CORE, ev->log, 0,
+                           "get channel s:%i pid:%P fd:%d",
+                           ch.slot, ch.pid, ch.fd);
+            ngx_processes[ch.slot].pid = ch.pid;
+            ngx_processes[ch.slot].channel[0] = ch.fd;
+            break;
+
+        case NGX_CMD_CLOSE_CHANNEL:
+            ngx_log_debug4(NGX_LOG_DEBUG_CORE, ev->log, 0,
+                           "close channel s:%i pid:%P our:%P fd:%d",
+                           ch.slot, ch.pid, ngx_processes[ch.slot].pid,
+                           ngx_processes[ch.slot].channel[0]);
+            if (close(ngx_processes[ch.slot].channel[0]) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno, "close() channel failed");
+            }
+            ngx_processes[ch.slot].channel[0] = -1;
+            break;
+        }
     }
 }

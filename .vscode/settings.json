@@ -19,6 +19,7 @@
         "mutex": "cpp",
         "ngx_files.h": "c",
         "ngx_shmtx.h": "c",
-        "ngx_event.h": "c"
+        "ngx_event.h": "c",
+        "vector": "c"
     }
 }
