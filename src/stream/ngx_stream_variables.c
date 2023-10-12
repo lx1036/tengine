@@ -55,7 +55,6 @@ static ngx_int_t ngx_stream_variable_protocol(ngx_stream_session_t *s,
 
 
 static ngx_stream_variable_t  ngx_stream_core_variables[] = {
-
     { ngx_string("binary_remote_addr"), NULL,
       ngx_stream_variable_binary_remote_addr, 0, 0, 0 },
 
@@ -129,20 +128,12 @@ static ngx_stream_variable_t  ngx_stream_core_variables[] = {
 
       ngx_stream_null_variable
 };
-
-
-ngx_stream_variable_value_t  ngx_stream_variable_null_value =
-    ngx_stream_variable("");
-ngx_stream_variable_value_t  ngx_stream_variable_true_value =
-    ngx_stream_variable("1");
-
-
+ngx_stream_variable_value_t  ngx_stream_variable_null_value = ngx_stream_variable("");
+ngx_stream_variable_value_t  ngx_stream_variable_true_value = ngx_stream_variable("1");
 static ngx_uint_t  ngx_stream_variable_depth = 100;
 
-
-ngx_stream_variable_t *
-ngx_stream_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
-{
+// stream 里的变量，然后加到 ngx_stream_core_main_conf_t.variables_keys
+ngx_stream_variable_t * ngx_stream_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags) {
     ngx_int_t                     rc;
     ngx_uint_t                    i;
     ngx_hash_key_t               *key;
@@ -150,8 +141,7 @@ ngx_stream_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
     ngx_stream_core_main_conf_t  *cmcf;
 
     if (name->len == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid variable name \"$\"");
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid variable name \"$\"");
         return NULL;
     }
 
@@ -160,20 +150,15 @@ ngx_stream_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
     }
 
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
-
     key = cmcf->variables_keys->keys.elts;
     for (i = 0; i < cmcf->variables_keys->keys.nelts; i++) {
-        if (name->len != key[i].key.len
-            || ngx_strncasecmp(name->data, key[i].key.data, name->len) != 0)
-        {
+        if (name->len != key[i].key.len || ngx_strncasecmp(name->data, key[i].key.data, name->len) != 0) {
             continue;
         }
 
         v = key[i].value;
-
         if (!(v->flags & NGX_STREAM_VAR_CHANGEABLE)) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "the duplicate \"%V\" variable", name);
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "the duplicate \"%V\" variable", name);
             return NULL;
         }
 
@@ -194,30 +179,136 @@ ngx_stream_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
     if (v->name.data == NULL) {
         return NULL;
     }
-
     ngx_strlow(v->name.data, name->data, name->len);
-
     v->set_handler = NULL;
     v->get_handler = NULL;
     v->data = 0;
     v->flags = flags;
     v->index = 0;
-
     rc = ngx_hash_add_key(cmcf->variables_keys, &v->name, v, 0);
-
     if (rc == NGX_ERROR) {
         return NULL;
     }
-
     if (rc == NGX_BUSY) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "conflicting variable name \"%V\"", name);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "conflicting variable name \"%V\"", name);
         return NULL;
     }
 
     return v;
 }
+// 初始化 ngx_stream_core_variables -> ngx_stream_add_variable()
+ngx_int_t ngx_stream_variables_add_core_vars(ngx_conf_t *cf) {
+    ngx_stream_variable_t        *cv, *v;
+    ngx_stream_core_main_conf_t  *cmcf;
 
+    cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
+
+    cmcf->variables_keys = ngx_pcalloc(cf->temp_pool, sizeof(ngx_hash_keys_arrays_t));
+    if (cmcf->variables_keys == NULL) {
+        return NGX_ERROR;
+    }
+
+    cmcf->variables_keys->pool = cf->pool;
+    cmcf->variables_keys->temp_pool = cf->pool;
+    if (ngx_hash_keys_array_init(cmcf->variables_keys, NGX_HASH_SMALL) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&cmcf->prefix_variables, cf->pool, 8, sizeof(ngx_stream_variable_t)) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    for (cv = ngx_stream_core_variables; cv->name.len; cv++) {
+        v = ngx_stream_add_variable(cf, &cv->name, cv->flags);
+        if (v == NULL) {
+            return NGX_ERROR;
+        }
+
+        *v = *cv;
+    }
+
+    return NGX_OK;
+}
+// ngx_stream_variables_init_vars->ngx_stream_variables_add_core_vars->ngx_stream_add_variable
+ngx_int_t ngx_stream_variables_init_vars(ngx_conf_t *cf) {
+    size_t                        len;
+    ngx_uint_t                    i, n;
+    ngx_hash_key_t               *key;
+    ngx_hash_init_t               hash;
+    ngx_stream_variable_t        *v, *av, *pv;
+    ngx_stream_core_main_conf_t  *cmcf;
+
+    /* set the handlers for the indexed stream variables */
+    cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
+    v = cmcf->variables.elts;
+    pv = cmcf->prefix_variables.elts;
+    key = cmcf->variables_keys->keys.elts;
+    for (i = 0; i < cmcf->variables.nelts; i++) {
+        for (n = 0; n < cmcf->variables_keys->keys.nelts; n++) {
+            av = key[n].value;
+            if (v[i].name.len == key[n].key.len && ngx_strncmp(v[i].name.data, key[n].key.data, v[i].name.len) == 0) {
+                v[i].get_handler = av->get_handler;
+                v[i].data = av->data;
+                av->flags |= NGX_STREAM_VAR_INDEXED;
+                v[i].flags = av->flags;
+                av->index = i;
+                if (av->get_handler == NULL || (av->flags & NGX_STREAM_VAR_WEAK)) {
+                    break;
+                }
+
+                goto next;
+            }
+        }
+
+        len = 0;
+        av = NULL;
+
+        for (n = 0; n < cmcf->prefix_variables.nelts; n++) {
+            if (v[i].name.len >= pv[n].name.len && v[i].name.len > len && ngx_strncmp(v[i].name.data, pv[n].name.data, pv[n].name.len) == 0) {
+                av = &pv[n];
+                len = pv[n].name.len;
+            }
+        }
+
+        if (av) {
+            v[i].get_handler = av->get_handler;
+            v[i].data = (uintptr_t) &v[i].name;
+            v[i].flags = av->flags;
+
+            goto next;
+         }
+
+        if (v[i].get_handler == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "unknown \"%V\" variable", &v[i].name);
+            return NGX_ERROR;
+        }
+
+    next:
+        continue;
+    }
+
+    for (n = 0; n < cmcf->variables_keys->keys.nelts; n++) {
+        av = key[n].value;
+        if (av->flags & NGX_STREAM_VAR_NOHASH) {
+            key[n].key.data = NULL;
+        }
+    }
+
+    hash.hash = &cmcf->variables_hash;
+    hash.key = ngx_hash_key;
+    hash.max_size = cmcf->variables_hash_max_size;
+    hash.bucket_size = cmcf->variables_hash_bucket_size;
+    hash.name = "variables_hash";
+    hash.pool = cf->pool;
+    hash.temp_pool = NULL;
+    if (ngx_hash_init(&hash, cmcf->variables_keys->keys.elts, cmcf->variables_keys->keys.nelts) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    cmcf->variables_keys = NULL;
+
+    return NGX_OK;
+}
 
 static ngx_stream_variable_t *
 ngx_stream_add_prefix_variable(ngx_conf_t *cf, ngx_str_t *name,
@@ -1165,153 +1256,3 @@ ngx_stream_regex_exec(ngx_stream_session_t *s, ngx_stream_regex_t *re,
 
 #endif
 
-
-ngx_int_t
-ngx_stream_variables_add_core_vars(ngx_conf_t *cf)
-{
-    ngx_stream_variable_t        *cv, *v;
-    ngx_stream_core_main_conf_t  *cmcf;
-
-    cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
-
-    cmcf->variables_keys = ngx_pcalloc(cf->temp_pool,
-                                       sizeof(ngx_hash_keys_arrays_t));
-    if (cmcf->variables_keys == NULL) {
-        return NGX_ERROR;
-    }
-
-    cmcf->variables_keys->pool = cf->pool;
-    cmcf->variables_keys->temp_pool = cf->pool;
-
-    if (ngx_hash_keys_array_init(cmcf->variables_keys, NGX_HASH_SMALL)
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
-
-    if (ngx_array_init(&cmcf->prefix_variables, cf->pool, 8,
-                       sizeof(ngx_stream_variable_t))
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
-
-    for (cv = ngx_stream_core_variables; cv->name.len; cv++) {
-        v = ngx_stream_add_variable(cf, &cv->name, cv->flags);
-        if (v == NULL) {
-            return NGX_ERROR;
-        }
-
-        *v = *cv;
-    }
-
-    return NGX_OK;
-}
-
-
-ngx_int_t
-ngx_stream_variables_init_vars(ngx_conf_t *cf)
-{
-    size_t                        len;
-    ngx_uint_t                    i, n;
-    ngx_hash_key_t               *key;
-    ngx_hash_init_t               hash;
-    ngx_stream_variable_t        *v, *av, *pv;
-    ngx_stream_core_main_conf_t  *cmcf;
-
-    /* set the handlers for the indexed stream variables */
-
-    cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
-
-    v = cmcf->variables.elts;
-    pv = cmcf->prefix_variables.elts;
-    key = cmcf->variables_keys->keys.elts;
-
-    for (i = 0; i < cmcf->variables.nelts; i++) {
-
-        for (n = 0; n < cmcf->variables_keys->keys.nelts; n++) {
-
-            av = key[n].value;
-
-            if (v[i].name.len == key[n].key.len
-                && ngx_strncmp(v[i].name.data, key[n].key.data, v[i].name.len)
-                   == 0)
-            {
-                v[i].get_handler = av->get_handler;
-                v[i].data = av->data;
-
-                av->flags |= NGX_STREAM_VAR_INDEXED;
-                v[i].flags = av->flags;
-
-                av->index = i;
-
-                if (av->get_handler == NULL
-                    || (av->flags & NGX_STREAM_VAR_WEAK))
-                {
-                    break;
-                }
-
-                goto next;
-            }
-        }
-
-        len = 0;
-        av = NULL;
-
-        for (n = 0; n < cmcf->prefix_variables.nelts; n++) {
-            if (v[i].name.len >= pv[n].name.len && v[i].name.len > len
-                && ngx_strncmp(v[i].name.data, pv[n].name.data, pv[n].name.len)
-                   == 0)
-            {
-                av = &pv[n];
-                len = pv[n].name.len;
-            }
-        }
-
-        if (av) {
-            v[i].get_handler = av->get_handler;
-            v[i].data = (uintptr_t) &v[i].name;
-            v[i].flags = av->flags;
-
-            goto next;
-         }
-
-        if (v[i].get_handler == NULL) {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "unknown \"%V\" variable", &v[i].name);
-            return NGX_ERROR;
-        }
-
-    next:
-        continue;
-    }
-
-
-    for (n = 0; n < cmcf->variables_keys->keys.nelts; n++) {
-        av = key[n].value;
-
-        if (av->flags & NGX_STREAM_VAR_NOHASH) {
-            key[n].key.data = NULL;
-        }
-    }
-
-
-    hash.hash = &cmcf->variables_hash;
-    hash.key = ngx_hash_key;
-    hash.max_size = cmcf->variables_hash_max_size;
-    hash.bucket_size = cmcf->variables_hash_bucket_size;
-    hash.name = "variables_hash";
-    hash.pool = cf->pool;
-    hash.temp_pool = NULL;
-
-    if (ngx_hash_init(&hash, cmcf->variables_keys->keys.elts,
-                      cmcf->variables_keys->keys.nelts)
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
-
-    cmcf->variables_keys = NULL;
-
-    return NGX_OK;
-}

@@ -1171,7 +1171,7 @@ ngx_http_dyups_body_handler(ngx_http_request_t *r)
         body = ngx_http_dyups_read_body_from_file(r);
     } else {
 
-        body = ngx_http_dyups_read_body(r);
+        body = ngx_http_dyups_read_body(r); // "server 127.0.0.1:8089;server 127.0.0.1:8088;"
     }
 
     if (body == NULL) {
@@ -1191,7 +1191,7 @@ ngx_http_dyups_body_handler(ngx_http_request_t *r)
       body: server ip:port weight
     */
 
-    value = res->elts;
+    value = res->elts; // data="upstream/dyhost HTTP/1.1\r\nHost", len=8
 
     if (value[0].len != 8
         || ngx_strncasecmp(value[0].data, (u_char *) "upstream", 8) != 0) // path 必须是 upstream/xxx
@@ -1201,7 +1201,7 @@ ngx_http_dyups_body_handler(ngx_http_request_t *r)
         goto finish;
     }
 
-    name = value[1];
+    name = value[1]; // "dyhost HTTP/1.1\r\nHost", len=6
 
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "[dyups] post upstream name: %V", &name);
@@ -1246,12 +1246,12 @@ ngx_dyups_update_upstream(ngx_str_t *name, ngx_buf_t *buf, ngx_str_t *rv)
 
     ngx_http_dyups_read_msg_locked(timer);
 
-    status = ngx_dyups_sandbox_update(buf, rv);
+    status = ngx_dyups_sandbox_update(buf, rv); // buf="server 127.0.0.1:8089;server 127.0.0.1:8088;"
     if (status != NGX_HTTP_OK) {
         goto finish;
     }
 
-    status = ngx_dyups_do_update(name, buf, rv);
+    status = ngx_dyups_do_update(name, buf, rv); // name=dyhost
     if (status == NGX_HTTP_OK) {
 
         if (ngx_http_dyups_send_msg(name, buf, NGX_DYUPS_ADD)) {

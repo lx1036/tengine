@@ -142,19 +142,15 @@ static ngx_conf_post_t  ngx_stream_proxy_ssl_conf_command_post =
 static ngx_conf_deprecated_t  ngx_conf_deprecated_proxy_downstream_buffer = {
     ngx_conf_deprecated, "proxy_downstream_buffer", "proxy_buffer_size"
 };
-
 static ngx_conf_deprecated_t  ngx_conf_deprecated_proxy_upstream_buffer = {
     ngx_conf_deprecated, "proxy_upstream_buffer", "proxy_buffer_size"
 };
-
 static ngx_conf_enum_t  ngx_stream_proxy_protocol[] = {
     { ngx_string("off"), 0 },
     { ngx_string("on"), 1 },
     { ngx_string("v2"), 2 },
     { ngx_null_string, 0 }
 };
-
-
 static ngx_command_t  ngx_stream_proxy_commands[] = {
 
     { ngx_string("proxy_pass"),
@@ -417,8 +413,6 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
 
       ngx_null_command
 };
-
-
 static ngx_stream_module_t  ngx_stream_proxy_module_ctx = {
     NULL,                                  /* preconfiguration */
     NULL,                                  /* postconfiguration */
@@ -429,8 +423,6 @@ static ngx_stream_module_t  ngx_stream_proxy_module_ctx = {
     ngx_stream_proxy_create_srv_conf,      /* create server configuration */
     ngx_stream_proxy_merge_srv_conf        /* merge server configuration */
 };
-
-
 ngx_module_t  ngx_stream_proxy_module = {
     NGX_MODULE_V1,
     &ngx_stream_proxy_module_ctx,          /* module context */
@@ -447,9 +439,50 @@ ngx_module_t  ngx_stream_proxy_module = {
 };
 
 
-static void
-ngx_stream_proxy_handler(ngx_stream_session_t *s)
-{
+static char * ngx_stream_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_stream_proxy_srv_conf_t *pscf = conf;
+    ngx_url_t                            u;
+    ngx_str_t                           *value, *url;
+    ngx_stream_complex_value_t           cv;
+    ngx_stream_core_srv_conf_t          *cscf;
+    ngx_stream_compile_complex_value_t   ccv;
+
+    if (pscf->upstream || pscf->upstream_value) {
+        return "is duplicate";
+    }
+
+    cscf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_core_module);
+    cscf->handler = ngx_stream_proxy_handler;
+    value = cf->args->elts;
+    url = &value[1];
+    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+    ccv.cf = cf;
+    ccv.value = url;
+    ccv.complex_value = &cv;
+    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+    if (cv.lengths) {
+        pscf->upstream_value = ngx_palloc(cf->pool, sizeof(ngx_stream_complex_value_t));
+        if (pscf->upstream_value == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        *pscf->upstream_value = cv;
+        return NGX_CONF_OK;
+    }
+
+    ngx_memzero(&u, sizeof(ngx_url_t));
+    u.url = *url; // "127.0.0.1:9091"
+    u.no_resolve = 1;
+    pscf->upstream = ngx_stream_upstream_add(cf, &u, 0);
+    if (pscf->upstream == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+static void ngx_stream_proxy_handler(ngx_stream_session_t *s) {
     u_char                           *p;
     ngx_str_t                        *host;
     ngx_uint_t                        i;
@@ -462,12 +495,8 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
     ngx_stream_upstream_main_conf_t  *umcf;
 
     c = s->connection;
-
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
-
-    ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
-                   "proxy connection handler");
-
+    ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0, "proxy connection handler");
     u = ngx_pcalloc(c->pool, sizeof(ngx_stream_upstream_t));
     if (u == NULL) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
@@ -475,14 +504,10 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
     }
 
     s->upstream = u;
-
     s->log_handler = ngx_stream_proxy_log_error;
-
     u->requests = 1;
-
     u->peer.log = c->log;
     u->peer.log_error = NGX_ERROR_ERR;
-
     if (ngx_stream_proxy_set_local(s, u, pscf->local) != NGX_OK) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
@@ -494,12 +519,9 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
 
     u->peer.type = c->type;
     u->start_sec = ngx_time();
-
     c->write->handler = ngx_stream_proxy_downstream_handler;
     c->read->handler = ngx_stream_proxy_downstream_handler;
-
-    s->upstream_states = ngx_array_create(c->pool, 1,
-                                          sizeof(ngx_stream_upstream_state_t));
+    s->upstream_states = ngx_array_create(c->pool, 1, sizeof(ngx_stream_upstream_state_t));
     if (s->upstream_states == NULL) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
@@ -515,7 +537,6 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
     u->downstream_buf.end = p + pscf->buffer_size;
     u->downstream_buf.pos = p;
     u->downstream_buf.last = p;
-
     if (c->read->ready) {
         ngx_post_event(c->read, &ngx_posted_events);
     }
@@ -528,48 +549,31 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
     }
 
     if (u->resolved == NULL) {
-
         uscf = pscf->upstream;
-
     } else {
-
 #if (NGX_STREAM_SSL)
         u->ssl_name = u->resolved->host;
 #endif
 
         host = &u->resolved->host;
-
         umcf = ngx_stream_get_module_main_conf(s, ngx_stream_upstream_module);
-
         uscfp = umcf->upstreams.elts;
-
         for (i = 0; i < umcf->upstreams.nelts; i++) {
-
             uscf = uscfp[i];
-
-            if (uscf->host.len == host->len
-                && ((uscf->port == 0 && u->resolved->no_port)
-                     || uscf->port == u->resolved->port)
-                && ngx_strncasecmp(uscf->host.data, host->data, host->len) == 0)
-            {
+            if (uscf->host.len == host->len && ((uscf->port == 0 && u->resolved->no_port) 
+            || uscf->port == u->resolved->port) && ngx_strncasecmp(uscf->host.data, host->data, host->len) == 0) {
                 goto found;
             }
         }
 
         if (u->resolved->sockaddr) {
-
-            if (u->resolved->port == 0
-                && u->resolved->sockaddr->sa_family != AF_UNIX)
-            {
-                ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                              "no port in upstream \"%V\"", host);
+            if (u->resolved->port == 0 && u->resolved->sockaddr->sa_family != AF_UNIX) {
+                ngx_log_error(NGX_LOG_ERR, c->log, 0, "no port in upstream \"%V\"", host);
                 ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
                 return;
             }
 
-            if (ngx_stream_upstream_create_round_robin_peer(s, u->resolved)
-                != NGX_OK)
-            {
+            if (ngx_stream_upstream_create_round_robin_peer(s, u->resolved) != NGX_OK) {
                 ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
                 return;
             }
@@ -628,27 +632,177 @@ found:
     }
 
     u->upstream = uscf;
-
 #if (NGX_STREAM_SSL)
     u->ssl_name = uscf->host;
 #endif
 
-    if (uscf->peer.init(s, uscf) != NGX_OK) {
+    if (uscf->peer.init(s, uscf) != NGX_OK) { // ngx_stream_upstream_init_round_robin_peer()
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
 
     u->peer.start_time = ngx_current_msec;
-
-    if (pscf->next_upstream_tries
-        && u->peer.tries > pscf->next_upstream_tries)
-    {
+    if (pscf->next_upstream_tries && u->peer.tries > pscf->next_upstream_tries) {
         u->peer.tries = pscf->next_upstream_tries;
     }
 
     ngx_stream_proxy_connect(s);
 }
 
+static char * ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_stream_proxy_srv_conf_t *pscf = conf;
+
+    ngx_int_t                            rc;
+    ngx_str_t                           *value;
+    ngx_stream_complex_value_t           cv;
+    ngx_stream_upstream_local_t         *local;
+    ngx_stream_compile_complex_value_t   ccv;
+
+    if (pscf->local != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (cf->args->nelts == 2 && ngx_strcmp(value[1].data, "off") == 0) {
+        pscf->local = NULL;
+        return NGX_CONF_OK;
+    }
+
+    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &cv;
+
+    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    local = ngx_pcalloc(cf->pool, sizeof(ngx_stream_upstream_local_t));
+    if (local == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    pscf->local = local;
+
+    if (cv.lengths) {
+        local->value = ngx_palloc(cf->pool, sizeof(ngx_stream_complex_value_t));
+        if (local->value == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        *local->value = cv;
+
+    } else {
+        local->addr = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
+        if (local->addr == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        rc = ngx_parse_addr_port(cf->pool, local->addr, value[1].data,
+                                 value[1].len);
+
+        switch (rc) {
+        case NGX_OK:
+            local->addr->name = value[1];
+            break;
+
+        case NGX_DECLINED:
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid address \"%V\"", &value[1]);
+            /* fall through */
+
+        default:
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    if (cf->args->nelts > 2) {
+        if (ngx_strcmp(value[2].data, "transparent") == 0) {
+#if (NGX_HAVE_TRANSPARENT_PROXY)
+            ngx_core_conf_t  *ccf;
+
+            ccf = (ngx_core_conf_t *) ngx_get_conf(cf->cycle->conf_ctx,
+                                                   ngx_core_module);
+
+            ccf->transparent = 1;
+            local->transparent = 1;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "transparent proxying is not supported "
+                               "on this platform, ignored");
+#endif
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    return NGX_CONF_OK;
+}
+static void ngx_stream_proxy_connect(ngx_stream_session_t *s) {
+    ngx_int_t                     rc;
+    ngx_connection_t             *c, *pc;
+    ngx_stream_upstream_t        *u;
+    ngx_stream_proxy_srv_conf_t  *pscf;
+
+    c = s->connection;
+    c->log->action = "connecting to upstream";
+    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
+    u = s->upstream;
+    u->connected = 0;
+    u->proxy_protocol = pscf->proxy_protocol;
+    if (u->state) {
+        u->state->response_time = ngx_current_msec - u->start_time;
+    }
+
+    u->state = ngx_array_push(s->upstream_states);
+    if (u->state == NULL) {
+        ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    ngx_memzero(u->state, sizeof(ngx_stream_upstream_state_t));
+    u->start_time = ngx_current_msec;
+    u->state->connect_time = (ngx_msec_t) -1;
+    u->state->first_byte_time = (ngx_msec_t) -1;
+    u->state->response_time = (ngx_msec_t) -1;
+    rc = ngx_event_connect_peer(&u->peer);
+    ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0, "proxy connect: %i", rc);
+    if (rc == NGX_ERROR) {
+        ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
+    u->state->peer = u->peer.name;
+    if (rc == NGX_BUSY) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0, "no live upstreams");
+        ngx_stream_proxy_finalize(s, NGX_STREAM_BAD_GATEWAY);
+        return;
+    }
+    if (rc == NGX_DECLINED) {
+        ngx_stream_proxy_next_upstream(s);
+        return;
+    }
+
+    /* rc == NGX_OK || rc == NGX_AGAIN || rc == NGX_DONE */
+    pc = u->peer.connection;
+    pc->data = s;
+    pc->log = c->log;
+    pc->pool = c->pool;
+    pc->read->log = c->log;
+    pc->write->log = c->log;
+    if (rc != NGX_AGAIN) {
+        ngx_stream_proxy_init_upstream(s);
+        return;
+    }
+
+    pc->read->handler = ngx_stream_proxy_connect_handler;
+    pc->write->handler = ngx_stream_proxy_connect_handler;
+
+    ngx_add_timer(pc->write, pscf->connect_timeout);
+}
 
 static ngx_int_t
 ngx_stream_proxy_eval(ngx_stream_session_t *s,
@@ -752,85 +906,6 @@ ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
 }
 
 
-static void
-ngx_stream_proxy_connect(ngx_stream_session_t *s)
-{
-    ngx_int_t                     rc;
-    ngx_connection_t             *c, *pc;
-    ngx_stream_upstream_t        *u;
-    ngx_stream_proxy_srv_conf_t  *pscf;
-
-    c = s->connection;
-
-    c->log->action = "connecting to upstream";
-
-    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
-
-    u = s->upstream;
-
-    u->connected = 0;
-    u->proxy_protocol = pscf->proxy_protocol;
-
-    if (u->state) {
-        u->state->response_time = ngx_current_msec - u->start_time;
-    }
-
-    u->state = ngx_array_push(s->upstream_states);
-    if (u->state == NULL) {
-        ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-        return;
-    }
-
-    ngx_memzero(u->state, sizeof(ngx_stream_upstream_state_t));
-
-    u->start_time = ngx_current_msec;
-
-    u->state->connect_time = (ngx_msec_t) -1;
-    u->state->first_byte_time = (ngx_msec_t) -1;
-    u->state->response_time = (ngx_msec_t) -1;
-
-    rc = ngx_event_connect_peer(&u->peer);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0, "proxy connect: %i", rc);
-
-    if (rc == NGX_ERROR) {
-        ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-        return;
-    }
-
-    u->state->peer = u->peer.name;
-
-    if (rc == NGX_BUSY) {
-        ngx_log_error(NGX_LOG_ERR, c->log, 0, "no live upstreams");
-        ngx_stream_proxy_finalize(s, NGX_STREAM_BAD_GATEWAY);
-        return;
-    }
-
-    if (rc == NGX_DECLINED) {
-        ngx_stream_proxy_next_upstream(s);
-        return;
-    }
-
-    /* rc == NGX_OK || rc == NGX_AGAIN || rc == NGX_DONE */
-
-    pc = u->peer.connection;
-
-    pc->data = s;
-    pc->log = c->log;
-    pc->pool = c->pool;
-    pc->read->log = c->log;
-    pc->write->log = c->log;
-
-    if (rc != NGX_AGAIN) {
-        ngx_stream_proxy_init_upstream(s);
-        return;
-    }
-
-    pc->read->handler = ngx_stream_proxy_connect_handler;
-    pc->write->handler = ngx_stream_proxy_connect_handler;
-
-    ngx_add_timer(pc->write, pscf->connect_timeout);
-}
 
 
 static void
@@ -2502,157 +2577,3 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
 #endif
 
 
-static char *
-ngx_stream_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_stream_proxy_srv_conf_t *pscf = conf;
-
-    ngx_url_t                            u;
-    ngx_str_t                           *value, *url;
-    ngx_stream_complex_value_t           cv;
-    ngx_stream_core_srv_conf_t          *cscf;
-    ngx_stream_compile_complex_value_t   ccv;
-
-    if (pscf->upstream || pscf->upstream_value) {
-        return "is duplicate";
-    }
-
-    cscf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_core_module);
-
-    cscf->handler = ngx_stream_proxy_handler;
-
-    value = cf->args->elts;
-
-    url = &value[1];
-
-    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
-
-    ccv.cf = cf;
-    ccv.value = url;
-    ccv.complex_value = &cv;
-
-    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
-        return NGX_CONF_ERROR;
-    }
-
-    if (cv.lengths) {
-        pscf->upstream_value = ngx_palloc(cf->pool,
-                                          sizeof(ngx_stream_complex_value_t));
-        if (pscf->upstream_value == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        *pscf->upstream_value = cv;
-
-        return NGX_CONF_OK;
-    }
-
-    ngx_memzero(&u, sizeof(ngx_url_t));
-
-    u.url = *url;
-    u.no_resolve = 1;
-
-    pscf->upstream = ngx_stream_upstream_add(cf, &u, 0);
-    if (pscf->upstream == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_stream_proxy_srv_conf_t *pscf = conf;
-
-    ngx_int_t                            rc;
-    ngx_str_t                           *value;
-    ngx_stream_complex_value_t           cv;
-    ngx_stream_upstream_local_t         *local;
-    ngx_stream_compile_complex_value_t   ccv;
-
-    if (pscf->local != NGX_CONF_UNSET_PTR) {
-        return "is duplicate";
-    }
-
-    value = cf->args->elts;
-
-    if (cf->args->nelts == 2 && ngx_strcmp(value[1].data, "off") == 0) {
-        pscf->local = NULL;
-        return NGX_CONF_OK;
-    }
-
-    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
-
-    ccv.cf = cf;
-    ccv.value = &value[1];
-    ccv.complex_value = &cv;
-
-    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
-        return NGX_CONF_ERROR;
-    }
-
-    local = ngx_pcalloc(cf->pool, sizeof(ngx_stream_upstream_local_t));
-    if (local == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    pscf->local = local;
-
-    if (cv.lengths) {
-        local->value = ngx_palloc(cf->pool, sizeof(ngx_stream_complex_value_t));
-        if (local->value == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        *local->value = cv;
-
-    } else {
-        local->addr = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
-        if (local->addr == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        rc = ngx_parse_addr_port(cf->pool, local->addr, value[1].data,
-                                 value[1].len);
-
-        switch (rc) {
-        case NGX_OK:
-            local->addr->name = value[1];
-            break;
-
-        case NGX_DECLINED:
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid address \"%V\"", &value[1]);
-            /* fall through */
-
-        default:
-            return NGX_CONF_ERROR;
-        }
-    }
-
-    if (cf->args->nelts > 2) {
-        if (ngx_strcmp(value[2].data, "transparent") == 0) {
-#if (NGX_HAVE_TRANSPARENT_PROXY)
-            ngx_core_conf_t  *ccf;
-
-            ccf = (ngx_core_conf_t *) ngx_get_conf(cf->cycle->conf_ctx,
-                                                   ngx_core_module);
-
-            ccf->transparent = 1;
-            local->transparent = 1;
-#else
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "transparent proxying is not supported "
-                               "on this platform, ignored");
-#endif
-        } else {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid parameter \"%V\"", &value[2]);
-            return NGX_CONF_ERROR;
-        }
-    }
-
-    return NGX_CONF_OK;
-}

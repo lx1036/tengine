@@ -1775,21 +1775,10 @@ ngx_cmp_sockaddr(struct sockaddr *sa1, socklen_t slen1,
 }
 
 
-in_port_t
-ngx_inet_get_port(struct sockaddr *sa)
-{
+in_port_t ngx_inet_get_port(struct sockaddr *sa) {
     struct sockaddr_in   *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6  *sin6;
-#endif
 
     switch (sa->sa_family) {
-
-#if (NGX_HAVE_INET6)
-    case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) sa;
-        return ntohs(sin6->sin6_port);
-#endif
 
 #if (NGX_HAVE_UNIX_DOMAIN)
     case AF_UNIX:
@@ -1797,7 +1786,7 @@ ngx_inet_get_port(struct sockaddr *sa)
 #endif
 
     default: /* AF_INET */
-        sin = (struct sockaddr_in *) sa;
+        sin = (struct sockaddr_in *) sa; // hex(5001)=0x1389
         return ntohs(sin->sin_port);
     }
 }

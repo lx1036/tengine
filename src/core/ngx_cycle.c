@@ -287,7 +287,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     conf.no_ssl_init = cycle->no_ssl_init;
 #endif
 
-#if 0
+#if 1
     log->log_level = NGX_LOG_DEBUG_ALL;
 #endif
 

@@ -149,7 +149,7 @@ ngx_stream_ssl_preread_handler(ngx_stream_session_t *s)
 
     while (last - p >= 5) {
 
-        if ((p[0] & 0x80) && p[2] == 1 && (p[3] == 0 || p[3] == 3)) {
+        if ((p[0] & 0x80) && p[2] == 1 && (p[3] == 0 || p[3] == 3)) { // 0x80=128
             ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
                            "ssl preread: version 2 ClientHello");
             ctx->version[0] = p[3];
@@ -157,7 +157,7 @@ ngx_stream_ssl_preread_handler(ngx_stream_session_t *s)
             return NGX_OK;
         }
 
-        if (p[0] != 0x16) {
+        if (p[0] != 0x16) { // 22
             ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
                            "ssl preread: not a handshake");
             ngx_stream_set_ctx(s, NULL, ngx_stream_ssl_preread_module);

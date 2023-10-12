@@ -176,8 +176,8 @@ ngx_stream_core_run_phases(ngx_stream_session_t *s)
     ph = cmcf->phase_engine.handlers;
 
     while (ph[s->phase_handler].checker) {
-
-        rc = ph[s->phase_handler].checker(s, &ph[s->phase_handler]);
+        
+        rc = ph[s->phase_handler].checker(s, &ph[s->phase_handler]); // -> ngx_stream_core_generic_phase()
 
         if (rc == NGX_OK) {
             return;
@@ -199,7 +199,14 @@ ngx_stream_core_generic_phase(ngx_stream_session_t *s,
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
                    "generic phase: %ui", s->phase_handler);
-
+    /* [
+        "NGX_STREAM_PREACCESS_PHASE": ngx_stream_set_handler(), 
+        "NGX_STREAM_PREACCESS_PHASE": ngx_stream_limit_conn_handler(), 
+        "NGX_STREAM_ACCESS_PHASE": ngx_stream_access_handler(), 
+        "NGX_STREAM_SSL_PHASE": ngx_stream_ssl_handler(),
+        
+        ]
+    */
     rc = ph->handler(s);
 
     if (rc == NGX_OK) {
@@ -337,29 +344,19 @@ ngx_stream_core_preread_phase(ngx_stream_session_t *s,
     return NGX_OK;
 }
 
-
-ngx_int_t
-ngx_stream_core_content_phase(ngx_stream_session_t *s,
-    ngx_stream_phase_handler_t *ph)
-{
+// curl localhost:5001 -> ngx_stream_core_content_phase() -> ngx_stream_proxy_handler()
+ngx_int_t ngx_stream_core_content_phase(ngx_stream_session_t *s, ngx_stream_phase_handler_t *ph) {
     ngx_connection_t            *c;
     ngx_stream_core_srv_conf_t  *cscf;
-
     c = s->connection;
-
     c->log->action = NULL;
-
     cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
-
-    if (c->type == SOCK_STREAM
-        && cscf->tcp_nodelay
-        && ngx_tcp_nodelay(c) != NGX_OK)
-    {
+    if (c->type == SOCK_STREAM && cscf->tcp_nodelay && ngx_tcp_nodelay(c) != NGX_OK) {
         ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return NGX_OK;
     }
 
-    cscf->handler(s);
+    cscf->handler(s); // ngx_stream_proxy_handler(), ngx_stream_proxy_pass() 里定义的
 
     return NGX_OK;
 }

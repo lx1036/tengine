@@ -3,3 +3,5 @@ tags
 logs
 bin
 *_temp
+cmake-build*
+socketPing.py
